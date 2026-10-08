@@ -14,12 +14,14 @@ import {
 } from 'lucide-react';
 import HeaderLogo from './HeaderLogo';
 import { CHECKOUT_URL, DOWNSELL_CHECKOUT_URL, BEFORE_AFTER_CASES } from '../data/quizData';
+import { trackCheckoutClick, trackDownsellCheckoutClick, trackBackredirectView, trackMetaEvent } from '../utils/pixel';
 
 export default function BackRedirectStep({ onBackToQuiz }) {
   const [timeLeft, setTimeLeft] = useState(588); // 9 min 48 sec
   const [showDownsellModal, setShowDownsellModal] = useState(false);
 
   useEffect(() => {
+    trackBackredirectView();
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     const interval = setInterval(() => {
@@ -30,6 +32,7 @@ export default function BackRedirectStep({ onBackToQuiz }) {
     const handleMouseLeave = (e) => {
       if (e.clientY <= 15) {
         setShowDownsellModal(true);
+        trackMetaEvent('Downsell_ExitIntent_Triggered', { offer: 'subsidio_5.90' }, true);
       }
     };
 
@@ -37,6 +40,7 @@ export default function BackRedirectStep({ onBackToQuiz }) {
     window.history.pushState({ downsell_trap: true }, '', window.location.href);
     const handlePopState = () => {
       setShowDownsellModal(true);
+      trackMetaEvent('Downsell_Popstate_Triggered', { offer: 'subsidio_5.90' }, true);
     };
 
     document.addEventListener('mouseleave', handleMouseLeave);
@@ -56,15 +60,18 @@ export default function BackRedirectStep({ onBackToQuiz }) {
   };
 
   const handleCheckout = (e, isDownsell = false) => {
-    const url = isDownsell ? DOWNSELL_CHECKOUT_URL : CHECKOUT_URL;
-    if (url === '#') {
-      e.preventDefault();
+    e.preventDefault();
+    if (isDownsell) {
+      trackDownsellCheckoutClick();
+    } else {
+      trackCheckoutClick();
     }
   };
 
   const handleOpenDownsell = (e) => {
     e.preventDefault();
     setShowDownsellModal(true);
+    trackMetaEvent('Downsell_Manual_Opened', { offer: 'subsidio_5.90' }, true);
   };
 
 

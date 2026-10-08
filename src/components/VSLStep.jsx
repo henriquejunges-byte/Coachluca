@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import HeaderLogo from './HeaderLogo';
 import { ASSETS } from '../data/quizData';
+import { trackVSLView, trackVSLPlay, trackVSLComplete, trackVSLProgress } from '../utils/pixel';
 
 // Target duration in seconds of video playback to reach 100% (fast paced sensation)
 const TARGET_PLAYED_SECONDS_FOR_100 = 12.0;
@@ -64,9 +65,13 @@ export default function VSLStep({ onContinue }) {
 
   const videoRef = useRef(null);
   const containerRef = useRef(null);
+  const tracked50 = useRef(false);
+  const tracked80 = useRef(false);
 
   // Preload gif/cover on mount and ensure video is primed at 0:00
   useEffect(() => {
+    trackVSLView();
+
     const gifPreload = new Image();
     gifPreload.src = ASSETS.vslCover || '/assets/capa-vsl.gif';
 
@@ -87,6 +92,14 @@ export default function VSLStep({ onContinue }) {
 
     setProgressPercent(pct);
 
+    if (pct >= 50 && !tracked50.current) {
+      tracked50.current = true;
+      trackVSLProgress(50);
+    }
+    if (pct >= 80 && !tracked80.current) {
+      tracked80.current = true;
+      trackVSLProgress(80);
+    }
     if (pct >= 100 || ratio >= 1) {
       setIsUnlocked(true);
     }
@@ -127,6 +140,13 @@ export default function VSLStep({ onContinue }) {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handlePlayToggle();
+    }
+  };
+
   const handleMuteToggle = (e) => {
     e.stopPropagation();
     if (!videoRef.current) return;
@@ -145,6 +165,7 @@ export default function VSLStep({ onContinue }) {
   };
 
   const handleContinue = () => {
+    trackVSLComplete();
     if (videoRef.current) {
       videoRef.current.pause();
     }

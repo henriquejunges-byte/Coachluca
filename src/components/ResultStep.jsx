@@ -15,6 +15,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { TESTIMONIALS, BEFORE_AFTER_CASES, ASSETS, CHECKOUT_URL } from '../data/quizData';
+import { trackCheckoutClick } from '../utils/pixel';
 import HeaderLogo from './HeaderLogo';
 import DiagnosticReportCard from './DiagnosticReportCard';
 
@@ -357,9 +358,8 @@ export default function ResultStep({ userAnswers }) {
             <a
               href={CHECKOUT_URL}
               onClick={(e) => {
-                if (CHECKOUT_URL === '#') {
-                  e.preventDefault();
-                }
+                e.preventDefault();
+                trackCheckoutClick();
               }}
               className="w-full py-4 sm:py-5 px-6 rounded-[20px] bg-gradient-to-r from-[#FF2A85] via-[#FF007F] to-[#FF3377] hover:brightness-110 text-white font-black text-lg sm:text-xl shadow-[0_12px_28px_rgba(255,42,133,0.35)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all cursor-pointer group uppercase tracking-wide font-heading border-none text-center no-underline"
             >
