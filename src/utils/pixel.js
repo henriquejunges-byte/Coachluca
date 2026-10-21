@@ -287,76 +287,114 @@ export const trackOfferPage = () => {
 };
 
 /**
- * Builds the complete destination checkout URL with all persisted UTMs, fbclid, _fbp and _fbc
+ * Utmify: separador usado no xcod/sck da Hotmart (mesmo formato do script
+ * https://cdn.utmify.com.br/scripts/utms/latest.js).
+ * Ordem: utm_source | utm_campaign | utm_medium | utm_content | utm_term
  */
-export const getFinalCheckoutUrl = () => {
-  if (typeof window === 'undefined') return CHECKOUT_URL;
+const UTMIFY_SCK_SEPARATOR = 'hQwK21wXxR';
 
-  const persisted = captureAndPersistUTMs();
-  const searchParams = new URLSearchParams(window.location.search);
-
-  // Merge persisted params
-  Object.entries(persisted).forEach(([key, val]) => {
-    if (val && !searchParams.has(key)) {
-      searchParams.set(key, val);
-    }
-  });
-
-  // Attach Meta Facebook browser/click tracking cookies if available
-  const fbp = getCookie('_fbp');
-  const fbc = getCookie('_fbc');
-  if (fbp && !searchParams.has('fbp')) searchParams.set('fbp', fbp);
-  if (fbc && !searchParams.has('fbc')) searchParams.set('fbc', fbc);
-
-  const queryString = searchParams.toString();
-  if (!queryString) return CHECKOUT_URL;
-
-  // Clean trailing ? or & from base checkout url
-  let cleanBaseUrl = CHECKOUT_URL;
-  while (cleanBaseUrl.endsWith('?') || cleanBaseUrl.endsWith('&')) {
-    cleanBaseUrl = cleanBaseUrl.slice(0, -1);
+const shortenUtmifySegment = (value) => {
+  if (value.length <= 21) return value;
+  // Preserva o último segmento após "|" (normalmente o ID do objeto de anúncio)
+  const pipeIndex = value.lastIndexOf('|');
+  if (pipeIndex > 0) {
+    const id = value.slice(pipeIndex + 1);
+    return `${value.slice(0, 18)}...|${id}`;
   }
-  const separator = cleanBaseUrl.includes('?') ? '&' : '?';
-  return `${cleanBaseUrl}${separator}${queryString}`;
+  return `${value.slice(0, 18)}...`;
 };
 
 /**
- * Builds the complete downsell checkout URL ($5.90) with all persisted UTMs
+ * Fallback: monta o xcod/sck no formato Utmify caso o script da Utmify
+ * não tenha decorado o link (bloqueador, rede lenta, etc).
  */
-export const getFinalDownsellCheckoutUrl = () => {
-  const baseUrl = DOWNSELL_CHECKOUT_URL || 'https://pay.hotmart.com/V107941841D?off=j4kwpqwa';
+export const buildUtmifySck = (params) => {
+  const fields = ['utm_source', 'utm_campaign', 'utm_medium', 'utm_content', 'utm_term']
+    .map((key) => params[key] || '');
+
+  if (fields.every((v) => !v)) return params.xcod || params.src || '';
+
+  let value = fields.join(UTMIFY_SCK_SEPARATOR);
+  if (value.length > 255) {
+    value = fields.map(shortenUtmifySegment).join(UTMIFY_SCK_SEPARATOR).slice(0, 255);
+  }
+  return value;
+};
+
+/**
+ * Só aproveita o href decorado pela Utmify se ele aponta pro mesmo checkout/oferta.
+ */
+const isSameCheckout = (candidate, base) => {
+  try {
+    const a = new URL(candidate);
+    const b = new URL(base);
+    return a.origin === b.origin &&
+      a.pathname === b.pathname &&
+      a.searchParams.get('off') === b.searchParams.get('off');
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Monta a URL final do checkout:
+ * 1. Parte do href já decorado pelo script da Utmify (xcod/sck/UTMs) quando disponível
+ * 2. Completa com UTMs da página e as persistidas, sem sobrescrever o que a Utmify colocou
+ * 3. Garante xcod/sck no formato Utmify (fallback)
+ * 4. Anexa _fbp/_fbc da Meta
+ */
+const buildCheckoutUrl = (baseUrl, decoratedHref) => {
   if (typeof window === 'undefined') return baseUrl;
 
-  const persisted = captureAndPersistUTMs();
-  const searchParams = new URLSearchParams(window.location.search);
+  let url;
+  try {
+    url = new URL(decoratedHref && isSameCheckout(decoratedHref, baseUrl) ? decoratedHref : baseUrl);
+  } catch {
+    return baseUrl;
+  }
+  const params = url.searchParams;
 
-  Object.entries(persisted).forEach(([key, val]) => {
-    if (val && !searchParams.has(key)) {
-      searchParams.set(key, val);
-    }
+  const persisted = captureAndPersistUTMs();
+  new URLSearchParams(window.location.search).forEach((val, key) => {
+    if (val && !params.has(key)) params.set(key, val);
   });
+  Object.entries(persisted).forEach(([key, val]) => {
+    if (val && !params.has(key)) params.set(key, val);
+  });
+
+  if (!params.get('xcod') || !params.get('sck')) {
+    const sck = buildUtmifySck(Object.fromEntries(params.entries()));
+    if (sck) {
+      if (!params.get('xcod')) params.set('xcod', sck);
+      if (!params.get('sck')) params.set('sck', sck);
+    }
+  }
 
   const fbp = getCookie('_fbp');
   const fbc = getCookie('_fbc');
-  if (fbp && !searchParams.has('fbp')) searchParams.set('fbp', fbp);
-  if (fbc && !searchParams.has('fbc')) searchParams.set('fbc', fbc);
+  if (fbp && !params.has('fbp')) params.set('fbp', fbp);
+  if (fbc && !params.has('fbc')) params.set('fbc', fbc);
 
-  const queryString = searchParams.toString();
-  if (!queryString) return baseUrl;
-
-  let cleanBaseUrl = baseUrl;
-  while (cleanBaseUrl.endsWith('?') || cleanBaseUrl.endsWith('&')) {
-    cleanBaseUrl = cleanBaseUrl.slice(0, -1);
-  }
-  const separator = cleanBaseUrl.includes('?') ? '&' : '?';
-  return `${cleanBaseUrl}${separator}${queryString}`;
+  return url.toString();
 };
+
+/**
+ * URL final do checkout principal ($9.90)
+ */
+export const getFinalCheckoutUrl = (decoratedHref) =>
+  buildCheckoutUrl(CHECKOUT_URL, decoratedHref);
+
+/**
+ * URL final do checkout do downsell ($5.90)
+ */
+export const getFinalDownsellCheckoutUrl = (decoratedHref) =>
+  buildCheckoutUrl(DOWNSELL_CHECKOUT_URL || 'https://pay.hotmart.com/V107941841D?off=j4kwpqwa', decoratedHref);
 
 /**
  * Event 7: Click Checkout Button (AddPaymentInfo & Outbound Conversion Click)
  */
-export const trackCheckoutClick = () => {
-  const destinationUrl = getFinalCheckoutUrl();
+export const trackCheckoutClick = (decoratedHref) => {
+  const destinationUrl = getFinalCheckoutUrl(decoratedHref);
   const eventID = generateEventID('AddPaymentInfo', 'cta_click');
 
   trackMetaEvent('AddPaymentInfo', {
@@ -382,8 +420,8 @@ export const trackCheckoutClick = () => {
 /**
  * Event 7B: Click Downsell Checkout Button ($5.90 Special Emergency Subsidio)
  */
-export const trackDownsellCheckoutClick = () => {
-  const destinationUrl = getFinalDownsellCheckoutUrl();
+export const trackDownsellCheckoutClick = (decoratedHref) => {
+  const destinationUrl = getFinalDownsellCheckoutUrl(decoratedHref);
   const eventID = generateEventID('AddPaymentInfo', 'downsell_click');
 
   trackMetaEvent('AddPaymentInfo', {

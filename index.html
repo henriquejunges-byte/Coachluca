@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://pay.hotmart.com" />
     <link rel="dns-prefetch" href="https://pay.hotmart.com" />
+    <link rel="preconnect" href="https://cdn.utmify.com.br" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <!-- Meta Pixel Code -->
     <script>
@@ -47,6 +48,25 @@
       window.fbq('track', 'PageView');
     </script>
     <!-- End Meta Pixel Code -->
+    <!-- Utmify: UTMs -> xcod/sck no checkout da Hotmart (atribuição de vendas) -->
+    <script
+      src="https://cdn.utmify.com.br/scripts/utms/latest.js"
+      data-utmify-prevent-subids
+      async
+      defer
+    ></script>
+    <!-- Utmify Pixel: cole o ID do pixel criado em Utmify > Integrações > Pixels.
+         Vazio = não carrega. -->
+    <script>
+      window.pixelId = "";
+      if (window.pixelId) {
+        var utmifyPixel = document.createElement("script");
+        utmifyPixel.setAttribute("async", "");
+        utmifyPixel.setAttribute("defer", "");
+        utmifyPixel.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+        document.head.appendChild(utmifyPixel);
+      }
+    </script>
   </head>
   <body>
     <noscript>
@@ -55,4 +75,4 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
-</html>
+</html>

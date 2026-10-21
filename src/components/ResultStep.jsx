@@ -359,7 +359,8 @@ export default function ResultStep({ userAnswers }) {
               href={CHECKOUT_URL}
               onClick={(e) => {
                 e.preventDefault();
-                trackCheckoutClick();
+                // href já decorado pelo script da Utmify (xcod/sck + UTMs)
+                trackCheckoutClick(e.currentTarget?.href);
               }}
               className="w-full py-4 sm:py-5 px-6 rounded-[20px] bg-gradient-to-r from-[#FF2A85] via-[#FF007F] to-[#FF3377] hover:brightness-110 text-white font-black text-lg sm:text-xl shadow-[0_12px_28px_rgba(255,42,133,0.35)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all cursor-pointer group uppercase tracking-wide font-heading border-none text-center no-underline"
             >
