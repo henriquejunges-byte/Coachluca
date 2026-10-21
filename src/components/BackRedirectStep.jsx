@@ -61,10 +61,12 @@ export default function BackRedirectStep({ onBackToQuiz }) {
 
   const handleCheckout = (e, isDownsell = false) => {
     e.preventDefault();
+    // href já decorado pelo script da Utmify (xcod/sck + UTMs)
+    const decoratedHref = e.currentTarget?.href;
     if (isDownsell) {
-      trackDownsellCheckoutClick();
+      trackDownsellCheckoutClick(decoratedHref);
     } else {
-      trackCheckoutClick();
+      trackCheckoutClick(decoratedHref);
     }
   };
 
